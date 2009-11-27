@@ -1,4 +1,4 @@
-      program calc_wannier4
+      program calc_wannier
 c 080603, For plotting arbitary region, from calc_wannier
 c 071114, Takashi Miyake, from calc_wfn.F
       use m_LMTO
@@ -27,6 +27,8 @@ c 071114, Takashi Miyake, from calc_wfn.F
       double complex, allocatable :: wanpw1(:,:,:,:,:),
      &     wanaug1(:,:,:,:,:),wantot1(:,:,:,:,:)
 
+      complex(8),allocatable:: rhopw(:,:,:), rhoaug(:,:,:), rhotot(:,:,:) 
+
       double precision :: r_rini0(3),r_rfin0(3),ang,alat_ang
       integer:: i_rini(3),i_rfin(3)
       real(8):: r_rini(3), r_rfin(3),r
@@ -34,7 +36,9 @@ c 071114, Takashi Miyake, from calc_wfn.F
       integer :: npw(3),mesh(3),mesh0(3),mesh1(3),meshrange(2,3)
       integer :: iq,ib
       logical :: lrho,flag
-      integer:: i,id,j
+      integer:: i,id,j,i_v(10)
+
+      real(8):: eps=1.0d-8
      
       character(10):: vis_unit='none'
 
@@ -42,13 +46,18 @@ c 071114, Takashi Miyake, from calc_wfn.F
       character(20)::inputfile='GWinput'
 
 
-      character(10):: action='band'
+      character(10):: action
+
+      call getkeyvalue(inputfile,'vis_action',action)
+      write(*,*)'action=',action 
 
 c Read variables from DATA4GW, CphiGeig, QGphi, QGcou
       call setup_LMTO()
 c Read variables from MLWU/D
       if (action.eq.'wannier') then
       call setup_MLWF()
+      else 
+        write(*,*)'action=',trim(action),' skip setup_MLWF'
       endif 
 
       write(6,*) '### ib,bas(1:3,ib)'
@@ -64,23 +73,39 @@ c Read number of bands and k-points for plotting phi
 !      do iq=1,nq_wfn
 !        read(*,*) q_wfn(1:3,iq)
 !      enddo
-      if (action.eq.'band') then
-       call getkeyvalue(inputfile,'vis_wan_nqbz',nqbz)
+      if (action.eq.'norot') then
+       call getkeyvalue(inputfile,'vis_norot_nqbz',nqbz)
       endif
       nq_wfn = nqbz
       allocate(q_wfn(3,nq_wfn))
       q_wfn(1:3,1:nqbz) = qtt(1:3,1:nqbz)
 
-c      read(*,*) nband_wfn
-       call getkeyvalue(inputfile,'vis_wan_band_n',nband_wfn)
-
-      allocate(bindx_wfn(nband_wfn))
-c      read(*,*) bindx_wfn(1:nband_wfn)
-      call getkeyvalue(inputfile,'vis_wan_band_id',bindx_wfn,size=nband_wfn) 
+      if (action.eq.'wannier') then
+      call getkeyvalue(inputfile,'vis_wan_band_range',i_v,size=2) 
+      nband_wfn = i_v(2)-i_v(1)+1
+      allocate( bindx_wfn(nband_wfn) )
+      write(*,*) 'band'
       do ib=1,nband_wfn
+      bindx_wfn(ib) = i_v(1)-1+ib 
       write(*,*)ib,bindx_wfn(ib)
       enddo
       write(6,"(a,2i5)") '### nq_wfn,nband_wfn=',nq_wfn,nband_wfn
+
+      else if (action.eq.'norot') then
+
+       call getkeyvalue(inputfile,'vis_norot_band_range',i_v,size=2)
+       nband_wfn = i_v(2)-i_v(1)+1
+      allocate(bindx_wfn(nband_wfn))
+      write(*,*) 'band'
+      do ib=1,nband_wfn
+      bindx_wfn(ib) = i_v(1)-1+ib
+      write(*,*)ib,bindx_wfn(ib)
+      enddo
+      write(6,"(a,2i5)") '### nq_wfn,nband_wfn=',nq_wfn,nband_wfn
+
+      endif
+
+
       if (nband_wfn.gt.nband) stop 'nband_wfn.gt.nband !'
 c      read(*,*) tlat(1:3)
       call getkeyvalue( inputfile, 'vis_wan_tvec',   tlat,size=3)
@@ -90,7 +115,7 @@ c      read(*,*) tlat(1:3)
 c Setup FFT mesh
 c      read(*,*)nfac
       call getkeyvalue(inputfile, 'vis_wan_interpolation', nfac,default=1) 
-      call getkeyvalue(inputfile, 'vis_wan_unit', vis_unit,default='abc')
+      call getkeyvalue(inputfile, 'vis_unit', vis_unit,default='abc')
 
       if ( vis_unit.ne.'abc') then
          write(*,*) 'support only vis_wan_unit=abc'
@@ -102,14 +127,14 @@ c Allocate phi
 c      read(*,*)mesh(1),mesh(2),mesh(3)
 c      read(*,*)rini(1),rini(2),rini(3)
 c      read(*,*)rfin(1),rfin(2),rfin(3)
-      call getkeyvalue(inputfile,'vis_wan_mesh',  mesh0,size=3)
-      call getkeyvalue(inputfile,'vis_wan_lbound',r_rini0,size=3)
-      call getkeyvalue(inputfile,'vis_wan_ubound',r_rfin0,size=3)
+      call getkeyvalue(inputfile,'vis_mesh',  mesh0,size=3)
+      call getkeyvalue(inputfile,'vis_mesh_lbound',r_rini0,size=3)
+      call getkeyvalue(inputfile,'vis_mesh_ubound',r_rfin0,size=3)
       write(*,*) 'mesh=',mesh0
       write(*,*) 'lbound=',r_rini0
       write(*,*) 'ubound=',r_rfin0
 
-      call getkeyvalue(inputfile,'vis_wan_outputformat',outputformat) 
+      call getkeyvalue(inputfile,'vis_outputformat',outputformat) 
 
 
       allocate(phipw0(mesh0(1)+1,mesh0(2)+1,mesh0(3)+1,
@@ -183,7 +208,7 @@ c
       do id=1,3
       do i=1,mesh(id)+1
          r =  r_rini(id) + (r_rfin(id)-r_rini(id))*(i-1)/mesh(id)
-         if ( r> r_rini0(id) ) then 
+         if ( r> r_rini0(id)+eps ) then 
               j=i-1
               meshrange(1,id)=j
               r_rini1(id) = r_rini(id) + (r_rfin(id)-r_rini(id))*(j-1)/mesh(id)
@@ -194,7 +219,7 @@ c
       flag=.false.
       do i=1,mesh(id)+1
          r =  r_rini(id) + (r_rfin(id)-r_rini(id))*(i-1)/mesh(id)
-         if ( r> r_rfin0(id) ) then
+         if ( r> r_rfin0(id)-eps ) then
               j=i
               meshrange(2,id)=j 
               r_rfin1(id) = r_rini(id) + (r_rfin(id)-r_rini(id))*(j-1)/mesh(id)
@@ -210,13 +235,6 @@ c
       enddo
 
       mesh1(:)=meshrange(2,:)-meshrange(1,:)
-      allocate(wanpw1 (mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nsp))
-      allocate(wanaug1(mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nsp))
-      allocate(wantot1(mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nsp))
-      allocate(phipw1 (mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nq_wfn,nsp))
-      allocate(phiaug1(mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nq_wfn,nsp))
-      allocate(phitot1(mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nq_wfn,nsp))
-
        write(*,*)'range in inputfile'
        write(*,*) 'rini0=',r_rini0
        write(*,*) 'rfin0=',r_rfin0
@@ -227,6 +245,19 @@ c
        write(*,*) 'rini=',r_rini1
        write(*,*) 'rfin=',r_rfin1
       write(*,*)' '
+
+      if ( mesh1(1)<=0 .or.  mesh1(2)<=0 .or.  mesh1(3)<=0 ) then
+         write(*,*) 'error: mesh<0'
+         stop
+      endif
+
+      allocate(wanpw1 (mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nsp))
+      allocate(wanaug1(mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nsp))
+      allocate(wantot1(mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nsp))
+      allocate(phipw1 (mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nq_wfn,nsp))
+      allocate(phiaug1(mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nq_wfn,nsp))
+      allocate(phitot1(mesh1(1)+1,mesh1(2)+1,mesh1(3)+1,nband_wfn,nq_wfn,nsp))
+
 
       wanpw1(1:mesh1(1)+1,1:mesh1(2)+1,1:mesh1(3)+1, :,:) =
      .   wanpw(meshrange(1,1):meshrange(1,1)+mesh1(1), 
@@ -265,6 +296,7 @@ c Dump phi in OpenDX format
       qdum = 0.0d0
       ang=0.529177d0
       alat_ang=alat*ang
+
       if (outputformat.eq.'opendx') then
       call wfn2dx_2(alat_ang,plat,nsp,1,nband_wfn,qdum,bindx_wfn,
      &     mesh1,r_rini1,r_rfin1,wanpw1,wanaug1,wantot1)
@@ -306,12 +338,38 @@ c     i     mesh,rini,rfin,wanpw,wanaug,wantot,  ! for wannier function
 
       write(*,*) 'dump rho? [T/F]'
 c      read(*,*) lrho
-       lrho=.false. 
+       call getkeyvalue(inputfile,'vis_wrt_rho',lrho,default=.false.)
        write(*,*) lrho 
 !      if (lrho) call calc_rho(nq_wfn,nband_wfn,npw,phipw,phiaug,phitot)
 !      if (lrho) call calc_rho(1,nband_wfn,npw,wanpw,wanaug,wantot)
-      if (lrho) call calc_rho_2
-     &(alat_ang,nq_wfn,nband_wfn,mesh,r_rini,r_rfin,wanpw,wanaug,wantot)
+      if (lrho) then 
+
+       allocate( rhopw( mesh(1)+1,mesh(2)+1,mesh(3)+1 ),
+     . rhoaug( mesh(1)+1,mesh(2)+1,mesh(3)+1 ),
+     . rhotot( mesh(1)+1,mesh(2)+1,mesh(3)+1 ) ) 
+
+       rhopw=0.0d0
+       rhoaug=0.0d0
+       rhotot=0.0d0
+
+      call calc_rho_abc
+     &(alat_ang,nq_wfn,nband_wfn,mesh1,phipw1,phiaug1,phitot1,
+     o  rhopw,rhoaug,rhotot   )
+
+       if (outputformat.eq.'xsf') then
+       call wrt_xsf(
+     i     'rho', vis_unit,
+     i     alat_ang,plat,1,1,1,q_wfn,bindx_wfn,
+c     i     mesh1,r_rini1,r_rfin1,phipw1,phiaug1,phitot1,  ! for bloch orbital
+     i     mesh1,r_rini1,r_rfin1,rhopw,rhoaug,rhotot,
+     i     nbas,bas,nclass,iclass,zz )   
+
+       endif 
+
+       deallocate( rhopw, rhoaug, rhotot )
+
+      endif
+
       deallocate(phipw)
       deallocate(phiaug)
       deallocate(phitot)
@@ -320,7 +378,7 @@ c      read(*,*) lrho
       deallocate(wantot)
 
 
-      end program calc_wannier4
+      end program calc_wannier
 
 cccccccccccccccccccccc
       subroutine findq(q,iqin)

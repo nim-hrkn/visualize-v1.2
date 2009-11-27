@@ -32,6 +32,10 @@ c input
       double precision :: Z(natom)
       integer:: ic,ia,nrange(3),idim, iimg
 
+      real(8),allocatable:: phitmp(:,:,:)
+
+      write(*,*)basename 
+      allocate( phitmp(mesh(1)+1,mesh(2)+1,mesh(3)+1) )
 
       do ia=1,natom
         ic=iclass(ia)
@@ -98,13 +102,28 @@ c     .    'isp',isp,'_iq',iq,'_ib',ib,'_',iband,'_ri',iimg
         r=r*alat 
         endif
 
+#if 1
+       idim=1
+       write(ifile,'(3f20.5)') plat(:,idim)*(rfin(idim)-rini(idim))*alat
+       idim=2
+       write(ifile,'(3f20.5)') plat(:,idim)*(rfin(idim)-rini(idim))*alat
+       idim=3
+       write(ifile,'(3f20.5)') plat(:,idim)*(rfin(idim)-rini(idim))*alat
+#else
         idim=1
         write(ifile,'(3f20.5)') r(idim),zero,zero
         idim=2
         write(ifile,'(3f20.5)') zero,r(idim),zero
         idim=3
         write(ifile,'(3f20.5)') zero,zero,r(idim)
+#endif
 
+
+        write(*,*) 'ib,iq,isp=',ib,iq,isp 
+        phitmp= real(phitot(:,:,: ,ib,iq,isp))
+        write(*,*) 'R min/max=',minval(phitmp),maxval(phitmp)
+        phitmp= imag(phitot(:,:,: ,ib,iq,isp))
+        write(*,*) 'I min/max=',minval(phitmp),maxval(phitmp)
 
         do i3=1,mesh(3)+1
           do i2=1,mesh(2)+1

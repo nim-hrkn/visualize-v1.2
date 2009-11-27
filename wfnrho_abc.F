@@ -297,7 +297,8 @@ c          r(:) = rini(:) + (rfin(:)-rini(:))*rtmp(:)
       end subroutine calc_phi_abc
 cccccccccccccccccccccccccccccccccccc
       subroutine calc_rho_abc(alat_ang,nq_wfn,nband_wfn,mesh,
-     &   phipw,phiaug,phitot)
+     &   phipw,phiaug,phitot,
+     o  rhopw,rhoaug,rhotot )
       use m_LMTO
       implicit none
 c input
@@ -308,8 +309,10 @@ c input
      &     phiaug(mesh(1)+1,mesh(2)+1,mesh(3)+1,nband_wfn,nq_wfn,nsp),
      &     phitot(mesh(1)+1,mesh(2)+1,mesh(3)+1,nband_wfn,nq_wfn,nsp)
 
-      double complex,allocatable :: rhopw(:,:,:),
-     &     rhoaug(:,:,:),rhotot(:,:,:)
+c rho is real but take it as complex  to use the same print routine
+      double complex :: rhopw( mesh(1)+1,mesh(2)+1,mesh(3)+1 ),
+     .  rhoaug( mesh(1)+1,mesh(2)+1,mesh(3)+1 ), 
+     .  rhotot( mesh(1)+1,mesh(2)+1,mesh(3)+1 )
 
 c
       integer :: isp,iq,ib,i1,i2,i3
@@ -319,9 +322,9 @@ c
       integer :: bindxdum
       write(*,*) '--- calc_rho ---'
 c Allocate rho
-      allocate(rhopw(mesh(1)+1,mesh(2)+1,mesh(3)+1))
-      allocate(rhoaug(mesh(1)+1,mesh(2)+1,mesh(3)+1))
-      allocate(rhotot(mesh(1)+1,mesh(2)+1,mesh(3)+1))
+c      allocate(rhopw(mesh(1)+1,mesh(2)+1,mesh(3)+1))
+c      allocate(rhoaug(mesh(1)+1,mesh(2)+1,mesh(3)+1))
+c      allocate(rhotot(mesh(1)+1,mesh(2)+1,mesh(3)+1))
 
       rhopw(1:mesh(1)+1,1:mesh(2)+1,1:mesh(3)+1)=0.0d0
       rhoaug(1:mesh(1)+1,1:mesh(2)+1,1:mesh(3)+1)=0.0d0
@@ -367,12 +370,14 @@ c Allocate rho
 
       qdum(1:3)=0.0d0
       bindxdum=0
+#if 0
       call wfn2dx_abc(alat_ang,plat,1,1,1,qdum,bindxdum,
      &     mesh,rhopw,rhoaug,rhotot)
+#endif
 
-      deallocate(rhopw)
-      deallocate(rhoaug)
-      deallocate(rhotot)
+c      deallocate(rhopw)
+c      deallocate(rhoaug)
+c      deallocate(rhotot)
       end subroutine calc_rho_abc
 cccccccccccccccccccccccccccccc
       end module m_wfrho_abc 

@@ -61,6 +61,15 @@ c from gwinput0_v2x
 cv2
      &              ,nindx,lindx,ibasindx
       close(ifi)
+      
+      write(*,*)'iclass='
+      write(*,'(10I5)') iclass(:)
+      write(*,*)'nclass='
+      write(*,'(10I5)') ncore(:)
+      write(*,*)'nindx='
+      write(*,'(10I5)') nindx(:)
+      write(*,*)'lindx='
+      write(*,'(10I5)') lindx(:)
 c      write(*,*) 'ibasindx=',ibasindx
 c      write(*,*) 'efermi=',efermi
       end subroutine read_DATA4GW
